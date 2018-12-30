@@ -15,12 +15,25 @@ const ErrorValidationLabel = ({ txtLbl }) => (
     </label>
 );
 
+const Field = ({ valid, type, fieldId, fieldName, typeMismatch, formatErrorTxt, requiredTxt }) => {
+    const renderErrorLabel = !valid ? <ErrorValidationLabel txtLbl={typeMismatch ? formatErrorTxt : requiredTxt} /> : "";
+
+    return (
+        <>
+            <input type={type} name={fieldId} placeholder={fieldName} required />
+            <br/>
+            {renderErrorLabel}
+            <br/>
+        </>
+    );
+}
+
 
 class App extends Component {
     state = {
-        email: { ...txtFieldState, fieldName: "Email", required: true, requiredTxt: "Email is required", formatErrorTxt: "Incorrect email format" },
-        firstname: { ...txtFieldState, fieldName: "First Name", required: true, requiredTxt: "First Name is required" },
-        lastname: { ...txtFieldState, fieldName: "Last Name", required: false, requiredTxt: "Last Name is required" },
+        email: { ...txtFieldState, fieldName: "Email", required: true, requiredTxt: "Email is required", formatErrorTxt: "Incorrect email format", type: "email" },
+        firstname: { ...txtFieldState, fieldName: "First Name", required: true, requiredTxt: "First Name is required", type: "text" },
+        lastname: { ...txtFieldState, fieldName: "Last Name", required: false, requiredTxt: "Last Name is required", type: "text" },
         allFieldsValid: false
     };
 
@@ -87,17 +100,23 @@ class App extends Component {
         this.setState({ ...formValues, allFieldsValid }); //we set the state based on the extracted values from Constraint Validation API
     };
 
+    mapFieldInputs = () =>{
+        //we filter out `allFieldsValid` property as this is not included state for our input fields
+        return Object.keys(this.state).filter(x => x !== "allFieldsValid").map(field => {
+            return {
+                fieldId: field,
+                ...this.state[field]
+            };
+        });
+    }
+
     render() {
-        const { email, firstname, lastname, allFieldsValid } = this.state;
+        const { allFieldsValid } = this.state;
         const successFormDisplay = allFieldsValid ? "block" : "none";
         const inputFormDisplay = !allFieldsValid ? "block" : "none";
+        const fields = this.mapFieldInputs();
 
-
-        const renderEmailValidationError = email.valid ? 
-            "" : 
-            <ErrorValidationLabel txtLbl={email.typeMismatch ? email.formatErrorTxt : email.requiredTxt} />;
-        const renderDateValidationError = lastname.valid ? "" : <ErrorValidationLabel txtLbl={lastname.requiredTxt} />;
-        const renderFnameValidationError = firstname.valid ? "" : <ErrorValidationLabel txtLbl={firstname.requiredTxt} />;
+        const renderFields = fields.map(x => <Field {...x} />);
 
         return (
             <>
@@ -117,19 +136,7 @@ class App extends Component {
                         onSubmit={this.onSubmit}
                         noValidate
                     >
-                        <input type="email" name="email" placeholder="Email" required />
-                        <br />
-                        {renderEmailValidationError}
-                        <br />
-                        <input type="text" name="firstname" placeholder="First Name" required />
-                        <br />
-                        {renderFnameValidationError}
-                        <br />
-                        <input type="text" name="lastname" placeholder="Last Name" required />
-                        <br />
-                        {renderDateValidationError}
-                        <br />
-
+                        {renderFields}
 
                         <input type="submit" value="Submit" />
                     </form>
