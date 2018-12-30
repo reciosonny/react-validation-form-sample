@@ -4,35 +4,35 @@ import "./App.css";
 
 const txtFieldState = {
     value: "",
-    valid: false,
+    valid: true,
     typeMismatch: false,
-    hasRegexValidation: false,
-    regexFormat: "**insert regex format here**"
+    errMsg: "" //this is where our error message gets across
 };
+
+const ErrorValidationLabel = ({ txtLbl }) => (
+    <label htmlFor="" style={{ color: "red" }}>
+        {txtLbl}
+    </label>
+);
+
 
 class App extends Component {
     state = {
-        txtEmail: { ...txtFieldState, fieldName: "Email" },
-        txtFname: { ...txtFieldState, fieldName: "First Name" },
-        txtLname: { ...txtFieldState, fieldName: "Last Name" }
+        email: { ...txtFieldState, fieldName: "Email", required: true, requiredTxt: "Email is required", formatErrorTxt: "Incorrect email format" },
+        firstname: { ...txtFieldState, fieldName: "First Name", required: true, requiredTxt: "First Name is required" },
+        lastname: { ...txtFieldState, fieldName: "Last Name", required: false, requiredTxt: "Last Name is required" },
+        allFieldsValid: false
     };
 
-    onSubmit = e => {
-        /*TODO: take a look at this link for HTML5 API validation info: 
-            - https://www.sitepoint.com/html5-forms-javascript-constraint-validation-api/
-            - https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/HTML5/Constraint_validation
-            - https://css-tricks.com/form-validation-part-2-constraint-validation-api-javascript/
-        */
+    reduceFormValues = formElements => {
+        const arrElements = Array.prototype.slice.call(formElements); //we convert elements/inputs into an array found inside form element
 
-        e.preventDefault();
-        const form = e.target;
-        const arrElements = Array.prototype.slice.call(form.elements);
+        //we need to extract specific properties in Constraint Validation API using this code snippet
         const formValues = arrElements
             .filter(elem => elem.name.length > 0)
             .map(x => {
                 const { typeMismatch } = x.validity;
                 const { name, type, value } = x;
-                // x.setCustomValidity("validation error");
 
                 return {
                     name,
@@ -42,68 +42,62 @@ class App extends Component {
                     valid: x.checkValidity()
                 };
             })
-            .reduce((acc, currVal) => {
-                const { value, valid, typeMismatch } = currVal;
+            .reduce((acc, currVal) => { //then we finally use reduce, ready to put it in our state
+                const { value, valid, typeMismatch, type } = currVal;
                 const {
                     fieldName,
-                    hasRegexValidation,
-                    regexFormat
+                    requiredTxt,
+                    formatErrorTxt
                 } = this.state[currVal.name]; //get the rest of properties inside the state object
-
+                
+                //we'll need to map these properties back to state so we use reducer...
                 acc[currVal.name] = {
                     value,
                     valid,
                     typeMismatch,
                     fieldName,
-                    hasRegexValidation,
-                    regexFormat
+                    requiredTxt,
+                    formatErrorTxt
                 };
 
                 return acc;
             }, {});
 
-        // const
+        return formValues;
+    }
 
-        this.setState({ ...formValues });
-    };
-
-    checkAllFieldsValid = () => {
-        return !Object.keys(this.state)
-            .map(x => this.state[x])
+    checkAllFieldsValid = (formValues) => {
+        return !Object.keys(formValues)
+            .map(x => formValues[x])
             .some(field => !field.valid);
     };
 
+
+    onSubmit = e => {
+        e.preventDefault();
+        const form = e.target;
+
+        //we need to extract specific properties in Constraint Validation API using this code snippet
+        const formValues = this.reduceFormValues(form.elements);
+        const allFieldsValid = this.checkAllFieldsValid(formValues);
+        //note: put ajax calls here to persist the form inputs in the database.
+
+        //END
+
+        this.setState({ ...formValues, allFieldsValid }); //we set the state based on the extracted values from Constraint Validation API
+    };
+
     render() {
-        const { txtEmail, txtFname, txtLname } = this.state;
-        const checkIfValid = this.checkAllFieldsValid();
-        const successFormDisplay = checkIfValid ? "block" : "none";
-        const inputFormDisplay = !checkIfValid ? "block" : "none";
+        const { email, firstname, lastname, allFieldsValid } = this.state;
+        const successFormDisplay = allFieldsValid ? "block" : "none";
+        const inputFormDisplay = !allFieldsValid ? "block" : "none";
 
 
-        const renderEmailValidationError = txtEmail.valid ? (
-            ""
-        ) : (
-            <label htmlFor="" style={{ color: "red" }}>
-                {txtEmail.typeMismatch
-                    ? "Incorrect email format"
-                    : "Email is required"}
-            </label>
-        );
-        const renderDateValidationError = txtLname.valid ? (
-            ""
-        ) : (
-            <label htmlFor="" style={{ color: "red" }}>
-                Last name is required
-            </label>
-        );
-
-        const renderFnameValidationError = txtFname.valid ? (
-            ""
-        ) : (
-            <label htmlFor="" style={{ color: "red" }}>
-                First name is required
-            </label>
-        );
+        const renderEmailValidationError = email.valid ? 
+            "" : 
+            <ErrorValidationLabel txtLbl={email.typeMismatch ? email.formatErrorTxt : email.requiredTxt} />;
+        const renderDateValidationError = lastname.valid ? "" : <ErrorValidationLabel txtLbl={lastname.requiredTxt} />;
+        const renderFnameValidationError = firstname.valid ? "" : <ErrorValidationLabel txtLbl={firstname.requiredTxt} />;
 
         return (
             <>
@@ -123,33 +117,19 @@ class App extends Component {
                         onSubmit={this.onSubmit}
                         noValidate
                     >
-                        <input
-                            type="email"
-                            name="txtEmail"
-                            placeholder="Email"
-                            required
-                        />
+                        <input type="email" name="email" placeholder="Email" required />
                         <br />
                         {renderEmailValidationError}
                         <br />
-                        <input
-                            type="text"
-                            name="txtFname"
-                            placeholder="First Name"
-                            required
-                        />
+                        <input type="text" name="firstname" placeholder="First Name" required />
                         <br />
                         {renderFnameValidationError}
                         <br />
-                        <input
-                            type="text"
-                            name="txtLname"
-                            placeholder="Last Name"
-                            required
-                        />
+                        <input type="text" name="lastname" placeholder="Last Name" required />
                         <br />
                         {renderDateValidationError}
                         <br />
+
 
                         <input type="submit" value="Submit" />
                     </form>
